@@ -1,0 +1,20 @@
+[project]
+name = "mcp-server-cygnus"
+version = "0.6.2"
+description = "A simple MCP server exposing Cygnus tools only (no database)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp[cli]>=1.6.0",
+    "requests>=2.32.4",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = ["pyright>=1.1.389"]
+
+[project.scripts]
+mcp-server-cygnus = "mcp_server_cygnus:main"
