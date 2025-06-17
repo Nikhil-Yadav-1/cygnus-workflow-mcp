@@ -14,16 +14,20 @@ logger = logging.getLogger('mcp_cygnus_server')
 logger.info("Starting MCP Server (Cygnus tools only)")
 
 PROMPT_TEMPLATE = """
-the assistant's goal is to fetch the invoke-service endpoint on the local API server and return the response as it is, to the user.
-the assistant is supposed to wait for about 10 seconds after calling the invoke-service endpoint, to allow the server to process the request and return a response.
+Assistant Goals:
+- Fetch the invoke-service endpoint on the local API server and return the response directly to the user.
+- Wait approximately 10 seconds after calling the invoke-service endpoint to allow the server to process the request and respond.
+
 Prompts:
-This server provides a pre-written prompt called "mcp-demo" that helps users create and analyze scenarios. The prompt accepts a "topic" argument and guides users through creating tables, analyzing data, and generating insights. For example, if a user provides "retail sales" as the topic, the prompt will help create relevant tables and guide the analysis process. Prompts basically serve as interactive templates that help structure the conversation with the LLM in a useful way.
+- This server provides a pre-written prompt called "mcp-demo" to help users create and analyze scenarios. The prompt accepts a "topic" argument and guides users through creating tables, analyzing data, and generating insights. For example, if a user provides "retail sales" as the topic, the prompt will help create relevant tables and guide the analysis process. Prompts serve as interactive templates to structure conversations with the LLM in a useful way.
+
 Resources:
-This server exposes one key resource: "memo://insights", which is a business insights memo that gets automatically updated throughout the analysis process. As users analyze and discover insights, the memo resource gets updated in real-time to reflect new findings. Resources act as living documents that provide context to the conversation.
+- This server exposes one key resource: "memo://mcp-server-cygnus", which provides Cygnus-specific information and context. Resources act as living documents providing context to the conversation.
+
 Tools:
-This server provides several tools:
-"cygnus_alpha": A tool to read a sample text file (for demonstration purposes)
-"invoke-service": A tool to call the dashboard-component-insight-agent service via HTTP POST to the local API.
+- "cygnus_alpha": Answers user queries related to cygnus alpha by reading a sample text file (for demonstration purposes).
+- "invoke-service": Calls the dashboard-component-insight-agent service via HTTP POST to the local API and returns the response as-is.
+- "weather-workflow-tool": Fetches the current weather for a specified city. Takes a single argument `city` (e.g., "Delhi") and returns a detailed weather report for that city using the dashboard-component-insight-agent service.
 """
 
 class CygnusServer(FastMCP):
@@ -33,16 +37,16 @@ class CygnusServer(FastMCP):
     async def list_resources(self) -> list[types.Resource]:
         return [
             types.Resource(
-                uri=AnyUrl("memo://insights"),
-                name="Business Insights Memo",
-                description="A living document of discovered business insights",
+                uri=AnyUrl("memo://mcp-server-cygnus"),
+                name="Cygnus",
+                description="A resource providing Cygnus-specific information and context.",
                 mimeType="text/plain",
             )
         ]
 
     async def read_resource(self, uri: AnyUrl) -> str:
-        if str(uri) == "memo://insights":
-            return "No business insights have been discovered yet. (removed)"
+        if str(uri) == "memo://mcp-server-cygnus":
+            return "simple mcp server for cygnus alpha, with tools and prompts to call workflows and invoke services."
         raise ValueError(f"Unknown resource: {uri}")
 
     async def list_tools(self) -> list[types.Tool]:
@@ -66,16 +70,43 @@ class CygnusServer(FastMCP):
                     "properties": {},
                 },
             ),
+            types.Tool(
+                name="weather-workflow-tool",
+                description="A weather tool which takes in the city name and returns the weather for that city using the dashboard-component-insight-agent service.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "city": {"type": "string", "description": "The name of the city to get the weather for (e.g., 'Jaipur')"},
+                    },
+                    "required": ["city"],
+                },
+            ),
         ]
 
     async def call_tool(self, name: str, arguments: dict[str, Any]) -> list[types.TextContent]:
         if name == "cygnus_alpha":
-            with open("/home/nikhil/Desktop/mcp/cygnus/workflow/sample.txt", "r") as file:
-                content = file.read()
-            return [types.TextContent(type="text", text=content)]
+            answer = "invoke-service tool is used to call the dashboard-component-insight-agent service via HTTP POST to the local API. It is designed to fetch insights from the local API server."
+            return [types.TextContent(type="text", text=answer)]
         elif name == "invoke-service":
-            from mcp_server_cygnus.invoke_service_tool import invoke_service_tool
-            result = invoke_service_tool()
+            import logging
+            import asyncio
+            logging.basicConfig(filename="invoke_service_debug.log", level=logging.DEBUG)
+            from mcp_server_cygnus import invoke_service_tool as ist
+            logging.debug(f"invoke_service_tool type: {type(ist)}")
+            logging.debug(f"invoke_service_tool: {ist}")
+            logging.debug(f"invoke_service_tool.invoke_service_tool type: {type(ist.invoke_service_tool)}")
+            result = await asyncio.to_thread(ist.invoke_service_tool)
+            logging.debug(f"invoke_service_tool result: {result}")
+            return [types.TextContent(type="text", text=result)]
+        elif name == "weather-workflow-tool":
+            import logging
+            import asyncio
+            logging.basicConfig(filename="weather_workflow_tool_debug.log", level=logging.DEBUG)
+            from mcp_server_cygnus.tools import weather_workflow_tool
+            city = arguments.get("city", "Jaipur")
+            logging.debug(f"weather_workflow_tool called with city: {city}")
+            result = await asyncio.to_thread(weather_workflow_tool, city)
+            logging.debug(f"weather_workflow_tool result: {result}")
             return [types.TextContent(type="text", text=result)]
         else:
             raise ValueError(f"Unknown tool: {name}")

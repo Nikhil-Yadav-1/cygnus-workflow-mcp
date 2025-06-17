@@ -65,7 +65,20 @@ The server offers two core tools:
     ]
   }
 }
+
+or 
+
+
+"mcp-server-cygnus": {
+      "command": "uv",
+      "args": [
+        "run",
+        "mcp-server-cygnus"
+      ]
+    }
 ```
+
+build using: docker build -t mcp-server-cygnus .
 
 ## Usage with VS Code
 
