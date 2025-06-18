@@ -6,12 +6,13 @@ from typing import Any
 
 from mcp.server import InitializationOptions, NotificationOptions
 from mcp.server.fastmcp.server import FastMCP
-from mcp.server.stdio import stdio_server
+#import mcp.server.stdio import stdio_server  # removed for HTTP transport  # comment("here")
 import mcp.types as types
 
+import uvicorn  # comment("here")
 
 logger = logging.getLogger('mcp_cygnus_server')
-logger.info("Starting MCP Server (Cygnus tools only)")
+logger.info("Starting MCP Server (Cygnus tools only) over SSE HTTP")
 
 PROMPT_TEMPLATE = """
 Assistant Goals:
@@ -97,7 +98,7 @@ class CygnusServer(FastMCP):
             ),
             types.Tool(
                 name="kindlife-bizz-chat",
-                description="A tool to provide insights over kindlife's data and help users with queries related to kindlife's business operations, products, and services.",
+                description="A tool to provide insights over kindlife's data and help users with queries related to kindlife's business operations, products, or services.",
                 inputSchema={
                     "type": "object",
                     "properties": {
@@ -109,52 +110,37 @@ class CygnusServer(FastMCP):
         ]
 
     async def call_tool(self, name: str, arguments: dict[str, Any]) -> list[types.TextContent]:
-        if name == "cygnus_alpha":
-            answer = "invoke-service tool is used to call the dashboard-component-insight-agent service via HTTP POST to the local API. It is designed to fetch insights from the local API server."
-            return [types.TextContent(type="text", text=answer)]
-        elif name == "invoke-service":
-            import logging
-            import asyncio
-            logging.basicConfig(filename="invoke_service_debug.log", level=logging.DEBUG)
-            from mcp_server_cygnus import invoke_service_tool as ist
-            logging.debug(f"invoke_service_tool type: {type(ist)}")
-            logging.debug(f"invoke_service_tool: {ist}")
-            logging.debug(f"invoke_service_tool.invoke_service_tool type: {type(ist.invoke_service_tool)}")
-            result = await asyncio.to_thread(ist.invoke_service_tool)
-            logging.debug(f"invoke_service_tool result: {result}")
-            return [types.TextContent(type="text", text=result)]
-        elif name == "weather-workflow-tool":
-            import logging
-            import asyncio
-            logging.basicConfig(filename="weather_workflow_tool_debug.log", level=logging.DEBUG)
-            from mcp_server_cygnus.tools import weather_workflow_tool
-            city = arguments.get("city", "Jaipur")
-            logging.debug(f"weather_workflow_tool called with city: {city}")
-            result = await asyncio.to_thread(weather_workflow_tool, city)
-            logging.debug(f"weather_workflow_tool result: {result}")
-            return [types.TextContent(type="text", text=result)]
-        elif name == "recobee-movie-suggestion-tool":
-            import logging
-            import asyncio
-            logging.basicConfig(filename="recobee_movie_suggestion_tool_debug.log", level=logging.DEBUG)
-            from mcp_server_cygnus.tools import recobee_movie_suggestion_tool
-            movie_query = arguments.get("movie_query", "Suggest a good sci-fi movie")
-            logging.debug(f"recobee_movie_suggestion_tool called with query: {movie_query}")
-            result = await asyncio.to_thread(recobee_movie_suggestion_tool, movie_query)
-            logging.debug(f"recobee_movie_suggestion_tool result: {result}")
-            return [types.TextContent(type="text", text=result)]
-        elif name == "kindlife-bizz-chat":
-            import logging
-            import asyncio
-            logging.basicConfig(filename="kindlife_bizz_chat_debug.log", level=logging.DEBUG)
-            from mcp_server_cygnus.tools import kindlife_bizz_chat_tool
-            query = arguments.get("query", "Tell me about kindlife's latest products")
-            logging.debug(f"kindlife_bizz_chat_tool called with query: {query}")
-            result = await asyncio.to_thread(kindlife_bizz_chat_tool, query)
-            logging.debug(f"kindlife_bizz_chat_tool result: {result}")
-            return [types.TextContent(type="text", text=result)]
-        else:
-            raise ValueError(f"Unknown tool: {name}")
+        try:
+            if name == "cygnus_alpha":
+                answer = "invoke-service tool is used to call the dashboard-component-insight-agent service via HTTP POST to the local API. It is designed to fetch insights from the local API server."
+                return [types.TextContent(type="text", text=answer)]
+            elif name == "invoke-service":
+                import asyncio
+                from . import invoke_service_tool
+                result = await asyncio.to_thread(invoke_service_tool.invoke_service_tool)
+                return [types.TextContent(type="text", text=result)]
+            elif name == "weather-workflow-tool":
+                import asyncio
+                from .tools import weather_workflow_tool
+                city = arguments.get("city", "Jaipur")
+                result = await asyncio.to_thread(weather_workflow_tool, city)
+                return [types.TextContent(type="text", text=result)]
+            elif name == "recobee-movie-suggestion-tool":
+                import asyncio
+                from .tools import recobee_movie_suggestion_tool
+                movie_query = arguments.get("movie_query", "Suggest a good sci-fi movie")
+                result = await asyncio.to_thread(recobee_movie_suggestion_tool, movie_query)
+                return [types.TextContent(type="text", text=result)]
+            elif name == "kindlife-bizz-chat":
+                import asyncio
+                from .tools import kindlife_bizz_chat_tool
+                query = arguments.get("query", "Tell me about kindlife's latest products")
+                result = await asyncio.to_thread(kindlife_bizz_chat_tool, query)
+                return [types.TextContent(type="text", text=result)]
+            else:
+                raise ValueError(f"Unknown tool: {name}")
+        except Exception as e:
+            return [types.TextContent(type="text", text=f"Error while calling tool '{name}': {str(e)}")]
 
     async def list_prompts(self) -> list[types.Prompt]:
         return [
@@ -190,34 +176,11 @@ class CygnusServer(FastMCP):
 
 server = CygnusServer()
 
-async def main():
-    logger.info(f"Starting MCP Server (Cygnus tools only)")
-    _server = CygnusServer()
-    async with stdio_server() as (read_stream, write_stream):
-        logger.info("Server running with stdio transport")
-        await _server._mcp_server.run(
-            read_stream,
-            write_stream,
-            InitializationOptions(
-                server_name="mcp-server-cygnus", # yahan change karna hai
-                server_version="0.1.0",
-                capabilities=_server._mcp_server.get_capabilities(
-                    notification_options=NotificationOptions(),
-                    experimental_capabilities={},
-                ),
-            ),
-        )
-
-class ServerWrapper():
-    """A wrapper for compatibility with mcp[cli]"""
-    def __init__(self):
-        pass
-    def run(self):
-        import asyncio
-        asyncio.run(main())
+app = server.sse_app()
 
 if __name__ == "__main__":
-    wrapper = ServerWrapper()
-    wrapper.run()
-else:
-    wrapper = ServerWrapper()
+    uvicorn.run(
+        app,
+        host=os.getenv("MCP_HOST", "0.0.0.0"),
+        port=int(os.getenv("MCP_PORT", "8070")),
+    )
