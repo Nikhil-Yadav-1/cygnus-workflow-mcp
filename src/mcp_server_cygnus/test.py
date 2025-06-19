@@ -44,3 +44,16 @@ with httpx.Client(http2=True, timeout=None) as client:
     }
     resp = client.post(url, headers=headers, content=json.dumps(kindlife_payload))
     print(resp.text)
+
+    # Call my-account-chat tool
+    my_account_payload = {
+        "jsonrpc": "2.0",
+        "id": 4,
+        "method": "tools/call",
+        "params": {
+            "name": "my-account-chat",
+            "arguments": {"query": "i wanna know about superkind"}
+        }
+    }
+    resp = client.post(url, headers=headers, content=json.dumps(my_account_payload))
+    print(resp.text)

@@ -15,6 +15,8 @@ from starlette.middleware.cors import CORSMiddleware
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('mcp_cygnus_http_server')
 
+# uv run mcp dev src/mcp_server_cygnus/http_server.py
+
 class CygnusServer:
     def __init__(self):
         self.server = Server("mcp-server-cygnus")
@@ -47,7 +49,10 @@ class CygnusServer:
             This is an MCP (Model Context Protocol) server providing access to Cygnus tools and workflows.
 
             Available Tools:
-            - my_account_chat_tool : Interact with the Kindlife customer support chatbot for product information, order support, promotions, membership programs, and community resources
+            - cygnus_alpha: Query Cygnus Alpha information
+            - weather-workflow-tool: Get weather information for cities
+            - recobee-movie-suggestion-tool: Get movie recommendations
+            - kindlife-bizz-chat: Query KindLife business data
 
             Available Prompts:
             - mcp-demo: Interactive demo prompt with topic-based guidance
@@ -60,6 +65,62 @@ class CygnusServer:
     async def list_tools(self) -> list[types.Tool]:
         """List available tools"""
         return [
+            types.Tool(
+                name="cygnus_alpha",
+                description="Query information related to Cygnus Alpha system",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string", 
+                            "description": "Query about Cygnus Alpha system"
+                        }
+                    },
+                    "required": ["query"],
+                }
+            ),
+            types.Tool(
+                name="weather-workflow-tool",
+                description="Get current weather information for a specified city",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "city": {
+                            "type": "string", 
+                            "description": "Name of the city to get weather for (e.g., 'Jaipur', 'Delhi')"
+                        }
+                    },
+                    "required": ["city"],
+                },
+            ),
+            types.Tool(
+                name="recobee-movie-suggestion-tool",
+                description="Get movie suggestions based on user preferences or queries",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "movie_query": {
+                            "type": "string", 
+                            "description": "Movie-related query or preferences (e.g., 'Suggest a good sci-fi movie', 'Comedy movies from 2020')"
+                        }
+                    },
+                    "required": ["movie_query"],
+                }
+            ),
+            types.Tool(
+                name="kindlife-bizz-chat",
+                description="Query KindLife business data and get insights about operations, products, or services",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string", 
+                            "description": "Business-related query about KindLife operations, products, or services"
+                        }
+                    },
+                    "required": ["query"],
+                }
+            ),
             types.Tool(
                 name="my-account-chat",
                 description="Interact with the Kindlife.in customer support chatbot for product information, order support, promotions, membership programs, and community resources",
@@ -78,8 +139,44 @@ class CygnusServer:
 
     async def call_tool(self, name: str, arguments: dict[str, Any]) -> list[types.TextContent]:
         """Execute a tool call"""
-        try: 
-            if name == "my-account-chat":
+        try:
+            if name == "cygnus_alpha":
+                query = arguments.get("query", "")
+                try:
+                    from mcp_server_cygnus.tools import cygnus_alpha_tool
+                    result = await asyncio.to_thread(cygnus_alpha_tool, query)
+                except ImportError:
+                    result = f"Cygnus Alpha Response: The tool recobee-movie-suggestion-tool is used to get movie suggestions based on user preferences or queries with a given query: {query}"
+                return [types.TextContent(type="text", text=result)]
+                    
+            elif name == "weather-workflow-tool":
+                city = arguments.get("city", "Unknown City")
+                try:
+                    from mcp_server_cygnus.tools import weather_workflow_tool
+                    result = await asyncio.to_thread(weather_workflow_tool, city)
+                except ImportError:
+                    result = f"Weather for {city}: Sunny, 25°C (77°F), Humidity: 60%, Wind: 10 km/h. This is a mock response - integrate with actual weather service."
+                return [types.TextContent(type="text", text=result)]
+                
+            elif name == "recobee-movie-suggestion-tool":
+                movie_query = arguments.get("movie_query", "")
+                try:
+                    from mcp_server_cygnus.tools import recobee_movie_suggestion_tool
+                    result = await asyncio.to_thread(recobee_movie_suggestion_tool, movie_query)
+                except ImportError:
+                    result = f"Movie Suggestions for '{movie_query}': Based on your query, here are some recommendations: 1. Blade Runner 2049 (Sci-Fi), 2. Interstellar (Sci-Fi Drama), 3. The Matrix (Action Sci-Fi). This is a mock response - integrate with actual Recobee API."
+                return [types.TextContent(type="text", text=result)]
+                
+            elif name == "kindlife-bizz-chat":
+                query = arguments.get("query", "")
+                try:
+                    from mcp_server_cygnus.tools import kindlife_bizz_chat_tool
+                    result = await asyncio.to_thread(kindlife_bizz_chat_tool, query)
+                except ImportError:
+                    result = f"KindLife Business Insights for '{query}': Our latest products show strong market performance with 15% growth in Q4. Customer satisfaction remains high at 4.2/5 stars. This is a mock response - integrate with actual KindLife business data API."
+                return [types.TextContent(type="text", text=result)]
+                
+            elif name == "my-account-chat":
                 query = arguments.get("query", "")
                 try:
                     from mcp_server_cygnus.tools import my_account_chat_tool
@@ -128,8 +225,26 @@ class CygnusServer:
 
         ## Available Tools for {topic}:
 
-        1. **my_account_chat_tool** - Query user's account information and get insights about their orders, products, offers and services
+        1. **cygnus_alpha** - Query Cygnus Alpha system information
+        2. **weather-workflow-tool** - Get weather data (useful for location-based {topic} analysis)
+        3. **recobee-movie-suggestion-tool** - Get movie recommendations (great for entertainment-related {topic})
+        4. **kindlife-bizz-chat** - Query business insights (perfect for business-related {topic})
 
+        ## Suggested Workflow:
+
+        1. Start by using the **cygnus_alpha** tool to understand the system capabilities for {topic}
+        2. If your {topic} involves locations, try the **weather-workflow-tool**
+        3. For entertainment aspects of {topic}, use **recobee-movie-suggestion-tool**
+        4. For business insights related to {topic}, use **kindlife-bizz-chat**
+
+        ## Example Queries:
+
+        - "What can Cygnus Alpha tell me about {topic}?"
+        - "Get weather data for cities relevant to {topic}"
+        - "Suggest movies related to {topic}"
+        - "What business insights does KindLife have about {topic}?"
+
+        Try any of these tools to explore {topic} with the Cygnus system!
         """.strip()
         
         return types.GetPromptResult(
@@ -426,7 +541,7 @@ def main():
     logger.info('  }')
     
     uvicorn.run(
-        "new_server:app",
+        "http_server:app",
         host="0.0.0.0",
         port=8000,
         log_level="info",

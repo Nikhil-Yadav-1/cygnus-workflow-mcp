@@ -1,25 +1,17 @@
-import os
 import logging
 import asyncio
 import json
-from typing import Any, Optional, Dict, List
+from typing import Any
 from pydantic import AnyUrl
-
-# Standard MCP imports
 import mcp.types as types
 from mcp.server import Server
-from mcp.server.models import InitializationOptions
-import mcp.server.stdio
-
-# HTTP/ASGI imports
 import uvicorn
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import StreamingResponse, Response, JSONResponse
-from starlette.routing import Route, Mount
+from starlette.routing import Route
 from starlette.middleware.cors import CORSMiddleware
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('mcp_cygnus_http_server')
 
@@ -28,7 +20,6 @@ class CygnusServer:
         self.server = Server("mcp-server-cygnus")
         self.initialized = False
         
-        # Register handlers
         self.server.list_resources = self.list_resources
         self.server.read_resource = self.read_resource
         self.server.list_tools = self.list_tools
@@ -51,22 +42,21 @@ class CygnusServer:
         """Read a specific resource"""
         if str(uri) == "memo://mcp-server-cygnus":
             return """
-Cygnus MCP Server
+            Cygnus MCP Server
 
-This is an MCP (Model Context Protocol) server providing access to Cygnus tools and workflows.
+            This is an MCP (Model Context Protocol) server providing access to Cygnus tools and workflows.
 
-Available Tools:
-- cygnus_alpha: Query Cygnus Alpha information
-- invoke-service: Call dashboard component insight agent
-- weather-workflow-tool: Get weather information for cities
-- recobee-movie-suggestion-tool: Get movie recommendations
-- kindlife-bizz-chat: Query KindLife business data
+            Available Tools:
+            - cygnus_alpha: Query Cygnus Alpha information
+            - weather-workflow-tool: Get weather information for cities
+            - recobee-movie-suggestion-tool: Get movie recommendations
+            - kindlife-bizz-chat: Query KindLife business data
 
-Available Prompts:
-- mcp-demo: Interactive demo prompt with topic-based guidance
+            Available Prompts:
+            - mcp-demo: Interactive demo prompt with topic-based guidance
 
-Resources:
-- This memo resource providing server information
+            Resources:
+            - This memo resource providing server information
             """.strip()
         raise ValueError(f"Unknown resource: {uri}")
 
@@ -86,21 +76,6 @@ Resources:
                     },
                     "required": ["query"],
                 }
-            ),
-            types.Tool(
-                name="invoke-service",
-                description="Invoke the dashboard-component-insight-agent service via HTTP POST",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "endpoint": {
-                            "type": "string",
-                            "description": "Optional endpoint path",
-                            "default": "default"
-                        }
-                    },
-                    "additionalProperties": False
-                },
             ),
             types.Tool(
                 name="weather-workflow-tool",
@@ -170,15 +145,6 @@ Resources:
                     result = await asyncio.to_thread(cygnus_alpha_tool, query)
                 except ImportError:
                     result = f"Cygnus Alpha Response: The invoke-service tool is used to call the dashboard-component-insight-agent service via HTTP POST to the local API. Query received: {query}"
-                return [types.TextContent(type="text", text=result)]
-                
-            elif name == "invoke-service":
-                try:
-                    from . import invoke_service_tool as ist
-                    result = await asyncio.to_thread(ist.invoke_service_tool)
-                except ImportError:
-                    await asyncio.sleep(1)
-                    result = "Service invoked successfully. Dashboard component insight agent responded with status: OK"
                 return [types.TextContent(type="text", text=result)]
                     
             elif name == "weather-workflow-tool":
@@ -258,18 +224,16 @@ Resources:
         ## Available Tools for {topic}:
 
         1. **cygnus_alpha** - Query Cygnus Alpha system information
-        2. **invoke-service** - Call dashboard component insight agent
-        3. **weather-workflow-tool** - Get weather data (useful for location-based {topic} analysis)
-        4. **recobee-movie-suggestion-tool** - Get movie recommendations (great for entertainment-related {topic})
-        5. **kindlife-bizz-chat** - Query business insights (perfect for business-related {topic})
+        2. **weather-workflow-tool** - Get weather data (useful for location-based {topic} analysis)
+        3. **recobee-movie-suggestion-tool** - Get movie recommendations (great for entertainment-related {topic})
+        4. **kindlife-bizz-chat** - Query business insights (perfect for business-related {topic})
 
         ## Suggested Workflow:
 
         1. Start by using the **cygnus_alpha** tool to understand the system capabilities for {topic}
-        2. Use **invoke-service** to get insights from the dashboard component
-        3. If your {topic} involves locations, try the **weather-workflow-tool**
-        4. For entertainment aspects of {topic}, use **recobee-movie-suggestion-tool**
-        5. For business insights related to {topic}, use **kindlife-bizz-chat**
+        2. If your {topic} involves locations, try the **weather-workflow-tool**
+        3. For entertainment aspects of {topic}, use **recobee-movie-suggestion-tool**
+        4. For business insights related to {topic}, use **kindlife-bizz-chat**
 
         ## Example Queries:
 
@@ -279,7 +243,7 @@ Resources:
         - "What business insights does KindLife have about {topic}?"
 
         Try any of these tools to explore {topic} with the Cygnus system!
-                """.strip()
+        """.strip()
         
         return types.GetPromptResult(
             description=f"Interactive demo template for exploring {topic} with Cygnus tools",
@@ -586,5 +550,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# uv run mcp dev src/mcp_server_cygnus/http_server.py

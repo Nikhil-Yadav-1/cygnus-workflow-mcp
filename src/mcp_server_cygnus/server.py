@@ -191,7 +191,7 @@ class CygnusServer(FastMCP):
 server = CygnusServer()
 
 async def main():
-    logger.info(f"Starting MCP Server (Cygnus tools only)")
+    logger.info(f"Starting MCP Server")
     _server = CygnusServer()
     async with stdio_server() as (read_stream, write_stream):
         logger.info("Server running with stdio transport")
