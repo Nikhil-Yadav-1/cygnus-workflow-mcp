@@ -43,12 +43,12 @@ def my_account_chat_tool(query: str = "how can you help me?") -> str:
         "mobile": "919816640889",
         "text": query,
         "session_id": generate_random_session_id(),
-        "client_identifier": "919816640889"
+        "client_identifier": "919816640889",
+        # "client_identifier": "Q1lHTlVTX0FJX0FQSV9VU0VSQGtpbmRsaWZlLmluOnczcXU4QjRKZVZlODgzdlNzNzA4dDk0VzA0czk4U2cw"
     }
-    print("body:\n", body)
+
     try:
-        response = requests.post(url, headers=headers, data=body, timeout=40)
-        time.sleep(10)
+        response = requests.post(url, headers=headers, data=body, timeout=15)
         print(f"\nStatus Code: {response.status_code}")
         print(f"Response Text: {response.text}")
         return response.text

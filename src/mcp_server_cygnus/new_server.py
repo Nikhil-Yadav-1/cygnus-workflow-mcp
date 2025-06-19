@@ -6,11 +6,9 @@ from pydantic import AnyUrl
 import mcp.types as types
 from mcp.server import Server
 import uvicorn
-from starlette.applications import Starlette
-from starlette.requests import Request
-from starlette.responses import StreamingResponse, Response, JSONResponse
-from starlette.routing import Route
-from starlette.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Request, Response
+from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('mcp_cygnus_http_server')
@@ -394,15 +392,13 @@ async def health_check(request: Request) -> Response:
     """Health check endpoint"""
     return Response("OK", status_code=200)
 
-app = Starlette(
-    routes=[
-        Route("/", discover_capabilities, methods=["GET"]),
-        Route("/discover", discover_capabilities, methods=["GET"]),
-        Route("/mcp", handle_mcp_request, methods=["GET", "POST"]),
-        Route("/mcp/sse", handle_mcp_sse, methods=["GET"]),  
-        Route("/health", health_check, methods=["GET"]),
-    ]
-)
+app = FastAPI()
+
+app.add_api_route("/", discover_capabilities, methods=["GET"])
+app.add_api_route("/discover", discover_capabilities, methods=["GET"])
+app.add_api_route("/mcp", handle_mcp_request, methods=["GET", "POST"])
+app.add_api_route("/mcp/sse", handle_mcp_sse, methods=["GET"])
+app.add_api_route("/health", health_check, methods=["GET"])
 
 app.add_middleware(
     CORSMiddleware,

@@ -5,6 +5,7 @@ description = "A simple MCP server exposing Cygnus tools only (no database)"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "fastapi>=0.115.13",
     "httpx>=0.28.1",
     "mcp[cli]>=1.6.0",
     "requests>=2.32.4",
