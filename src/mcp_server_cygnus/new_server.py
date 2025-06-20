@@ -410,17 +410,7 @@ app.add_middleware(
 
 def main():
     """Main entry point"""
-    logger.info("Starting Fixed Cygnus MCP HTTP Server on port 8000")
-    logger.info("Available endpoints:")
-    logger.info("  GET / or /discover - Server capabilities")
-    logger.info("  POST /mcp - MCP protocol endpoint")
-    logger.info("  GET /health - Health check")
-    logger.info("")
-    logger.info("Windsurf Configuration:")
-    logger.info('  "mcp-server-cygnus-http": {')
-    logger.info('    "serverUrl": "http://localhost:8000/mcp"')
-    logger.info('  }')
-    
+    logger.info("Starting MCP HTTP Server on port 8000")
     uvicorn.run(
         "new_server:app",
         host="0.0.0.0",
